@@ -49,25 +49,39 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          load: true  # 将镜像加载到本地 Docker
+          load: true # 将镜像加载到本地 Docker
 
-      - name: Save Docker image as artifact
+      - name: Save Docker image as local tar.gz
+        id: save_local
         run: |
           # 提取第一个 tag 作为镜像名称
           IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
           echo "Saving image: $IMAGE_TAG"
           
-          # 创建安全的文件名（替换特殊字符）
+          # 创建安全的文件名
           SAFE_NAME=$(echo "$IMAGE_TAG" | sed 's/[^a-zA-Z0-9._-]/_/g')
           
-          # 保存镜像为 tar 文件
-          docker save "$IMAGE_TAG" | gzip > "${SAFE_NAME}.tar.gz"
+          # 创建一个目录来存放 artifact 文件（最佳实践）
+          mkdir -p ./artifact-staging
           
-          echo "artifact-name=${SAFE_NAME}" >> $GITHUB_OUTPUT
-        id: save
+          # 保存镜像为 tar 文件到 staging 目录
+          docker save "$IMAGE_TAG" | gzip > "./artifact-staging/${SAFE_NAME}.tar.gz"
+          
+          # 设置输出变量，供 upload-artifact 使用
+          echo "artifact-path=./artifact-staging/${SAFE_NAME}.tar.gz" >> $GITHUB_OUTPUT
+          echo "artifact-name=docker-image-${SAFE_NAME}" >> $GITHUB_OUTPUT # 确保这个名称与下载时的 pattern 匹配
+        # 注意：这里id改成了save_local，避免和原先的save混淆，虽然原先的id:save也没被其他地方引用
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.save_local.outputs.artifact-name }} # 使用上一步定义的 artifact 名称
+          path: ${{ steps.save_local.outputs.artifact-path }} # 使用上一步定义的 artifact 文件路径
+          retention-days: 5 # 可选：设置 artifact 的保留天数，默认为 90 天
 
       - name: Download all Docker image artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: docker-image-*
+          pattern: docker-image-* # 这个 pattern 现在应该能匹配到刚刚上传的 artifact 名称了
           path: ./docker-images
+          merge-multiple-artifacts: false # 如果可能上传多个同名artifact，这个很有用
