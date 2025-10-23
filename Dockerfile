@@ -10,9 +10,9 @@ COPY package*.json ./
 RUN npm ci
 
 # Copy source files
-COPY index.js ./
-COPY sequential-thinking-tool-schema.js ./
-COPY strategy-stages-mapping.json ./
+COPY *.js ./
+COPY *.json ./
+
 
 # Make the index.js executable
 RUN chmod +x index.js
