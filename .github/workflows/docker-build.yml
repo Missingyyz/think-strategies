@@ -42,12 +42,34 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          load: true  # 将镜像加载到本地 Docker
 
-      - name: Download a Build Artifact
-        uses: actions/download-artifact@v5
+      - name: Save Docker image as artifact
+        run: |
+          # 提取第一个 tag 作为镜像名称
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "Saving image: $IMAGE_TAG"
+          
+          # 创建安全的文件名（替换特殊字符）
+          SAFE_NAME=$(echo "$IMAGE_TAG" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          
+          # 保存镜像为 tar 文件
+          docker save "$IMAGE_TAG" | gzip > "${SAFE_NAME}.tar.gz"
+          
+          echo "artifact-name=${SAFE_NAME}" >> $GITHUB_OUTPUT
+        id: save
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ steps.save.outputs.artifact-name }}
+          path: "*.tar.gz"
+          retention-days: 7  # 保留 7 天，可根据需要调整
+          compression-level: 0  # 已经 gzip 压缩，不需要再压缩
