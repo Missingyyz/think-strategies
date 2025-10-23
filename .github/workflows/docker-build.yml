@@ -84,4 +84,3 @@ jobs:
         with:
           pattern: docker-image-* # 这个 pattern 现在应该能匹配到刚刚上传的 artifact 名称了
           path: ./docker-images
-          merge-multiple-artifacts: false # 如果可能上传多个同名artifact，这个很有用
