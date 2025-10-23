@@ -66,10 +66,8 @@ jobs:
           echo "artifact-name=${SAFE_NAME}" >> $GITHUB_OUTPUT
         id: save
 
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
+      - name: Download all Docker image artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: docker-image-${{ steps.save.outputs.artifact-name }}
-          path: "*.tar.gz"
-          retention-days: 7  # 保留 7 天，可根据需要调整
-          compression-level: 0  # 已经 gzip 压缩，不需要再压缩
+          pattern: docker-image-*
+          path: ./docker-images
